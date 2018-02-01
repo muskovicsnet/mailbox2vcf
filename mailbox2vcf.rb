@@ -6,22 +6,20 @@ class Mailboxtovcf
     @namepair_data = {}
   end
 
-  def read_maildir
+  def read_maildir(subdir)
     maildir = Maildir.new(@maildir_path)
     maildir.serializer = Maildir::Serializer::Mail.new
 
-    messages = maildir.list(:cur)
+    messages = maildir.list(subdir)
     messages.each do |message|
-      save_data(message.data[:from].addrs)
-      save_data(message.data[:to].addrs)
+      save_data(message.data[:from].addrs) if message.data[:from]
+      save_data(message.data[:to].addrs) if message.data[:to]
     end
-
-    write_to_file(@namepair_data)
   end
 
-  def write_to_file(data_hash)
-    open('output.txt', 'w') do |f|
-      data_hash.each do |row|
+  def write_to_file(output)
+    open(output, 'w') do |f|
+      @namepair_data.each do |row|
         f.puts render_vcard(row[0], row[1])
       end
     end
@@ -34,6 +32,7 @@ class Mailboxtovcf
       name = address if(name == '' || name == nil)
       unless @namepair_data.keys.include?(name)
         @namepair_data[name] = address
+        print '.'
       end
     end
   end
@@ -52,16 +51,22 @@ END:VCARD
   end
 end
 
-if ARGV.size == 1
+if ARGV.size >= 3
   dir = ARGV[0]
+  output = ARGV[1]
+  subdirs = ARGV[2, 99999]
   dir_cur = dir + '/cur'
   dir_exists = Dir.exists?(dir)
   dir_cur_exists = Dir.exists?(dir_cur)
   if dir_exists
     if dir_cur_exists
       app = Mailboxtovcf.new(dir)
-      app.read_maildir
-      puts "Output successfully written to: output.txt"
+      subdirs.each do |subdir|
+        app.read_maildir(subdir)
+      end
+      app.write_to_file(output)
+      puts ''
+      puts "Output successfully written to: #{output}"
       exit 0
     else
       puts "Directory does not exists: #{dir_cur}"
@@ -72,6 +77,6 @@ if ARGV.size == 1
     exit 1
   end
 else
-  puts "Usage: mailbox2vcf [maildir]"
+  puts "Usage: mailbox2vcf [maildir] [outputfile] [maildir_subdirs]"
   exit 1
 end
