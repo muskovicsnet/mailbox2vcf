@@ -12,8 +12,10 @@ class Mailboxtovcf
 
     messages = maildir.list(subdir)
     messages.each do |message|
-      save_data(message.data[:from].addrs) if message.data[:from]
-      save_data(message.data[:to].addrs) if message.data[:to]
+      if (message.data[:from].class == Mail::Field && message.data[:to].class == Mail::Field)
+        save_data(message.data[:from].addrs) unless message.data[:from].nil?
+        save_data(message.data[:to].addrs) unless message.data[:to].nil?
+      end
     end
   end
 
